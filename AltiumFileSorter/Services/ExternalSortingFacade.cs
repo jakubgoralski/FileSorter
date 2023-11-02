@@ -1,6 +1,4 @@
 ﻿using AltiumFileSorter.Models;
-using Microsoft.VisualStudio.Services.Common;
-using Microsoft.VisualStudio.Services.WebApi.Jwt;
 using NickStrupat;
 
 namespace AltiumFileSorter.Services
@@ -34,14 +32,16 @@ namespace AltiumFileSorter.Services
             List<Row> chunk = new List<Row>();
             ComputerInfo computerInfo = new ComputerInfo();
             ulong allFreeMemory = computerInfo.AvailablePhysicalMemory;
+            bool runsOutOfSpace = false;
 
             int i = 0;
+            Console.WriteLine("Reading and sorting...");
             foreach (string line in File.ReadLines(FilePath.AbsolutePath))
             {
                 chunk.Add(new Row(line));
 
-                //bool runsOutOfSpace = (allFreeMemory - (ulong)GC.GetTotalMemory(false)) <= MinimalEmptySpace;
-                bool runsOutOfSpace = i++ == 10_000_000;
+                if(i++%1_000_000==0)
+                    runsOutOfSpace = allFreeMemory - (ulong)GC.GetTotalMemory(false) < MinimalEmptySpace;
                 if (runsOutOfSpace)
                 {
                     i = 0;
@@ -51,7 +51,8 @@ namespace AltiumFileSorter.Services
                 }
             }
 
-            if(chunk.Any())
+            Console.WriteLine("Final sort...");
+            if (chunk.Any())
             {
                 chunk.Sort();
                 File.WriteAllLines($"{ChunksLocation.AbsolutePath}/{NumberOfChunks++}.txt", chunk.Select(x => x.ToString()));
@@ -62,6 +63,7 @@ namespace AltiumFileSorter.Services
         private void MergeAllChunks()
         {
             DirectoryInfo directoryInfo = new DirectoryInfo(ChunksLocation.AbsolutePath);
+            Console.WriteLine("Merging and writing...");
             while (Directory.GetFiles(ChunksLocation.AbsolutePath, "*", SearchOption.TopDirectoryOnly).Length > 1)
             {
                 string firstFile = Path.Combine(ChunksLocation.AbsolutePath, directoryInfo.GetFiles().Select(x => x.Name).ElementAt(0));
@@ -83,6 +85,7 @@ namespace AltiumFileSorter.Services
                 File.Delete(secondFile);
             }
         }
+
         private IEnumerable<Row> Merge(IEnumerator<Row> firstEnumerator, IEnumerator<Row> secondEnumerator)
         {
             bool firstExists = false;

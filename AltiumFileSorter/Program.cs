@@ -5,7 +5,6 @@ string filePath = Console.ReadLine();
 if (String.IsNullOrEmpty(filePath))
     return;
 
-Console.WriteLine("Sorting...");
 try
 {
     ExternalSortingFacade externalSorting = new ExternalSortingFacade(filePath);
